@@ -1,0 +1,150 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, minimum-scale=0.5, maximum-scale=3.0, user-scalable=yes" />
+    <meta name="format-detection" content="telephone=no" />
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.0.2/dist/css/bootstrap.min.css" rel="stylesheet" integrity="sha384-EVSTQN3/azprG1Anm3QDgpJLIm9Nao0Yz1ztcQTwFspd3yD65VohhpuuCOmLASjC" crossorigin="anonymous">
+    <script src="/static/js/jquery.min.js"></script>
+    <title>EnglishPal Study Room for {{ username }}</title>
+    <style>
+        .highlight {
+            background: #ff9;
+        }
+        .markHighlight {
+            background: #8EC5FC;
+        }
+    </style>
+</head>
+<body>
+<div class="container-fluid">
+    <p><b>English Pal for <font color="red">{{ username }}</font></b> <a class="btn btn-secondary" href="/logout" role="button">登出</a></p>
+
+    <p><b>阅读文章并回答问题</b></p>
+    <button onclick=deleteWordLight()>清除高亮</button><button onclick=markWordLight()>生词库高亮</button>
+    <p><a class="btn btn-success" href="/{{ username }}/reset" role="button"> 下一篇 Next Article </a></p>
+    <div id="text-content">
+        <div class="alert alert-success" role="alert">According to your word list, your level is<span class="badge bg-success">{{ article.user_level }}</span>and we have chosen an article with a difficulty level of <span class="badge bg-success">{{ article.text_level }}</span> for you.</div>
+        <p class="text-muted">Article added on: {{ article.date }}</p>
+        <div class="p-3 mb-2 bg-light text-dark">
+            <div id="articles">
+                <p class="display-3">{{ article.article_title }}</p>
+                <p class="lead">{{ article.article_body }}</p>
+            </div>
+            <p><small class="text-muted">{{ article.soure }}</small></p>
+            <p><b>
+                {% for x in article.question %}
+                    {{ x }}
+                    <br>
+                {% endfor %}
+            </b></p>
+            <script type="text/javascript">
+
+                function toggle_visibility(id) {
+                   var e = document.getElementById(id);
+                   if(e.style.display == 'block')
+                      e.style.display = 'none';
+                   else
+                      e.style.display = 'block';
+                }
+            </script>
+            <br>
+            <button onclick="toggle_visibility('answer');">ANSWER</button>
+            <br>
+            <div id="answer" style="display:none;"><br>{{ article.answer }}</div>
+            </div>
+    </div>
+    <p><b>收集生词吧</b> （可以在正文中划词，也可以复制黏贴）</p>
+    <form method="post" action="/{{ username }}">
+        <textarea name="content" id="selected-words" rows="10" cols="120"></textarea><br/>
+        <input type="submit" value="get 所有词的频率"/>
+        <input type="reset" value="清除"/>
+    </form>
+    <script>
+        function deleteWordLight(){
+            var e = document.getElementById("articles")
+            var title = e.children[0]
+            var body = e.children[1]
+            var markWord_title = title.innerText
+            var markWord_body = body.innerText
+            $(title).html(markWord_title)
+            $(body).html(markWord_body)
+        }
+
+        function markWordLight(){
+            var markWords = document.getElementsByClassName("new-word");
+            var e = document.getElementById("articles")
+            var title = e.children[0]
+            var body = e.children[1]
+            var markWord_title = title.innerText
+            var markWord_body = body.innerText
+            for(let i=0; i<markWords.length; i++){
+                markWord_title = markWord_title.replaceAll(markWords[i].firstElementChild.text,'<span class="markHighlight">'+markWords[i].firstElementChild.text+'</span>')
+                markWord_body = markWord_body.replaceAll(markWords[i].firstElementChild.text,'<span class="markHighlight">'+markWords[i].firstElementChild.text+'</span>')
+            }
+            $(title).html(markWord_title)
+            $(body).html(markWord_body)
+        }
+
+        function getWord(){
+            var word = window.getSelection?window.getSelection():document.selection.createRange().text;
+            return word;
+        }
+        function fillinWord(){
+            var element = document.getElementById("selected-words");
+            element.value = element.value + " " + getWord();
+            highlightWord()
+        }
+
+        function highlightWord(){
+            var word = ""+getWord()
+            if (word.trim() !== ""){
+                var e = document.getElementById("articles")
+                var title = e.children[0]
+                var body = e.children[1]
+                var newWord_title = title.innerHTML.replaceAll(getWord(),'<span class="highlight">'+getWord()+'</span>')
+                var newWord_body = body.innerHTML.replaceAll(getWord(),'<span class="highlight">'+getWord()+'</span>')
+
+                title.innerHTML = newWord_title
+                body.innerHTML = newWord_body
+                // $(title).html(newWord_title)
+                // $(body).html(newWord_body)
+            }
+        }
+
+        document.getElementById("articles").addEventListener("click", fillinWord, false);
+        document.getElementById("articles").addEventListener("touchstart", fillinWord, false);
+    </script>
+    {% if session.get('thisWord') %}
+        <script type="text/javascript">
+            window.onload = function(){
+                markWordLight()
+                var element = document.getElementsByName("aaa");
+                if (element != null)
+                    document.getElementsByName("aaa")[0].scrollIntoView(true);
+            }
+       </script>
+    {% endif %}
+    {% if lend>0 %}
+        <p><b>我的生词簿</b></p>
+        {% for x in des_ord %}
+            {% if x.sessioncheck %}
+                <a name="aaa"></a>
+            {% endif %}
+            {% if x.wlist%}
+                <p class="new-word">
+                <a class="btn btn-light" href="{{ x.you_link }}" role="button">{{ x.word }}</a>
+                (<a title="{{ x.jword }}">{{ x.freq }}</a>)
+                <a class="btn btn-success" href="{{ x.username }}/{{ x.word }}/familiar" role="button">熟悉</a>
+                <a class="btn btn-warning" href="{{ x.username }}/{{ x.word }}/unfamiliar" role="button">不熟悉</a>
+                <a class="btn btn-danger" href="{{ x.username }}/{{ x.word }}/del" role="button">删除</a> </p>
+            {% else %}
+                <a href="{{ x.you_link }}">{{ x.word }}</a>{{ x.freq }}
+            {% endif %}
+        {% endfor %}
+    {% endif %}
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.0.2/dist/js/bootstrap.bundle.min.js" integrity="sha384-MrcW6ZMFYlzcLA8Nl+NtUVF0sA7MsXsP1UyJoMp4YLEuNSfAP+JcXn/tWtIaxVXM" crossorigin="anonymous"></script>
+</div>
+</body>
+</html>
